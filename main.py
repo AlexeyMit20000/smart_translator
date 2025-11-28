@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -24,7 +24,6 @@ DATA_PATH = 'dataset/rus.txt'
 MODEL_EN_RU_PATH = 'model/model1.h5'
 VECTORIZE_EN_PATH = 'model/source_vectorization1.pkl'
 TARGET_VECTORIZE_EN_PATH = 'model/target_vectorization1.pkl'
-
 MODEL_RU_EN_PATH = 'model/model2.h5'
 VECTORIZE_RU_PATH = 'model/source_vectorization2.pkl'
 TARGET_VECTORIZE_RU_PATH = 'model/target_vectorization2.pkl'
@@ -42,38 +41,28 @@ for line in lines:
     parts = line.split("\t")
     if len(parts) >= 2:
         en, ru = parts[0], parts[1]
-        # Для en->ru
         pairs_en_ru.append((en, "[start] " + ru + " [end]"))
-        # Для ru->en
         pairs_ru_en.append((ru, "[start] " + en + " [end]"))
 
-# Перемешивание и разделение на train/val/test
 def split_data(pairs):
     random.shuffle(pairs)
     n = len(pairs)
     val_size = int(0.2 * n)
     train_size = n - 2 * val_size
-    train_pairs = pairs[:train_size]
-    val_pairs = pairs[train_size:train_size + val_size]
-    test_pairs = pairs[train_size + val_size:]
-    return train_pairs, val_pairs, test_pairs
+    return pairs[:train_size], pairs[train_size:train_size + val_size], pairs[train_size + val_size:]
 
 train_pairs_en_ru, val_pairs_en_ru, test_pairs_en_ru = split_data(pairs_en_ru)
 train_pairs_ru_en, val_pairs_ru_en, test_pairs_ru_en = split_data(pairs_ru_en)
 
-# Векторизация для en->ru
 with open(VECTORIZE_EN_PATH, 'rb') as f:
     source_vectorization_en = pickle.load(f)
 with open(TARGET_VECTORIZE_EN_PATH, 'rb') as f:
     target_vectorization_en = pickle.load(f)
-
-# Векторизация для ru->en
 with open(VECTORIZE_RU_PATH, 'rb') as f:
     source_vectorization_ru = pickle.load(f)
 with open(TARGET_VECTORIZE_RU_PATH, 'rb') as f:
     target_vectorization_ru = pickle.load(f)
 
-# Загрузка моделей
 model_en_ru = load_model(MODEL_EN_RU_PATH, custom_objects={
     "TransformerEncoder": TransformerEncoder,
     "TransformerDecoder": TransformerDecoder,
@@ -85,7 +74,6 @@ model_ru_en = load_model(MODEL_RU_EN_PATH, custom_objects={
     "PositionalEmbedding": PositionalEmbedding
 })
 
-# Обратные словари для декодирования
 def get_index_lookup(target_vectorization):
     vocab = target_vectorization.get_vocabulary()
     return dict(zip(range(len(vocab)), vocab))
@@ -93,7 +81,6 @@ def get_index_lookup(target_vectorization):
 index_lookup_en = get_index_lookup(target_vectorization_en)
 index_lookup_ru = get_index_lookup(target_vectorization_ru)
 
-# Транслитерация
 def simple_translit(word):
     translit_map = {
         'a':'а','b':'б','v':'в','g':'г','d':'д','e':'е','yo':'ё',
@@ -104,7 +91,6 @@ def simple_translit(word):
     }
     return ''.join([translit_map.get(ch, ch) for ch in word])
 
-# Декодирование
 def decode_sequence(input_sentence, model, source_vectorization, target_vectorization, index_lookup):
     tokenized_input = source_vectorization([input_sentence])
     decoded_sentence = "[start]"
@@ -156,30 +142,98 @@ def translate():
     except Exception as e:
         messagebox.showerror("Ошибка", str(e))
 
+def translate_file():
+    file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+    if file_path:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        try:
+            if direction == 'en-ru':
+                translation = decode_sequence(content, model_en_ru, source_vectorization_en, target_vectorization_en, index_lookup_en)
+            else:
+                translation = decode_sequence(content, model_ru_en, source_vectorization_ru, target_vectorization_ru, index_lookup_ru)
+            save_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+            if save_path:
+                with open(save_path, 'w', encoding='utf-8') as f:
+                    f.write(translation)
+                messagebox.showinfo("Готово", f"Перевод сохранен в {save_path}")
+        except Exception as e:
+            messagebox.showerror("Ошибка", "Ошибка при переводе файла: " + str(e))
+
 # Создаем GUI
 root = tk.Tk()
-root.title("Переводчик: Английский <-> Русский")
-root.geometry("700x600")
+root.title("Офлайн переводчик")
+root.geometry("900x700")
+root.configure(background='#f0f4f8')
 
-lbl_input = ttk.Label(root, text='Введите текст на английском:')
-lbl_input.pack(pady=5)
+style = ttk.Style()
+style.theme_use('clam')
+style.configure('BlueButton.TButton', font=('Arial', 11), padding=6, relief='flat', background='#66b3ff', foreground='white')
+style.map('BlueButton.TButton', background=[('active', '#3399ff')])
 
-txt_input = tk.Text(root, height=5, width=80)
-txt_input.pack(pady=5)
+# Верхняя панель для переключения
+top_frame = ttk.Frame(root)
+top_frame.pack(pady=10)
 
-lbl_output = ttk.Label(root, text='Перевод на русский:')
-lbl_output.pack(pady=5)
+btn_switch = ttk.Button(top_frame, text='сменить язык', command=switch_direction, style='BlueButton.TButton')
+btn_switch.pack()
 
-txt_output = tk.Text(root, height=15, width=80)
-txt_output.pack(pady=5)
+# Основной интерфейс
+main_frame = ttk.Frame(root)
+main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-btn_frame = ttk.Frame(root)
-btn_frame.pack(pady=10)
+# Левая часть - оригинальный текст
+left_frame = ttk.Frame(main_frame)
+left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+lbl_input = ttk.Label(left_frame, text='Введите текст на английском:')
+lbl_input.pack(anchor='w')
+txt_input = tk.Text(left_frame, height=15, width=40, font=("Arial", 12), bd=0, relief=tk.FLAT)
+txt_input.pack(fill=tk.BOTH, expand=True, pady=5)
 
-btn_translate = ttk.Button(btn_frame, text='Перевести', command=translate)
-btn_translate.pack(side='left', padx=5)
+# Правая часть - перевод
+right_frame = ttk.Frame(main_frame)
+right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+lbl_output = ttk.Label(right_frame, text='Перевод на русский:')
+lbl_output.pack(anchor='w')
+txt_output = tk.Text(right_frame, height=15, width=40, font=("Arial", 12), bd=0, relief=tk.FLAT)
+txt_output.pack(fill=tk.BOTH, expand=True, pady=5)
 
-btn_switch = ttk.Button(btn_frame, text='Английский → Русский', command=switch_direction)
-btn_switch.pack(side='left', padx=5)
+# Кнопки
+buttons_frame = ttk.Frame(root)
+buttons_frame.pack(pady=10)
 
+def on_translate_click():
+    input_text = txt_input.get("1.0", tk.END).strip()
+    if input_text:
+        if direction == 'en-ru':
+            result = decode_sequence(input_text, model_en_ru, source_vectorization_en, target_vectorization_en, index_lookup_en)
+        else:
+            result = decode_sequence(input_text, model_ru_en, source_vectorization_ru, target_vectorization_ru, index_lookup_ru)
+        txt_output.delete("1.0", tk.END)
+        txt_output.insert(tk.END, result)
+
+# Добавляем кнопки
+translate_button = ttk.Button(buttons_frame, text='Перевести', style='BlueButton.TButton', command=on_translate_click)
+translate_button.grid(row=0, column=0, padx=10)
+
+translate_file_button = ttk.Button(buttons_frame, text='Перевести файл', style='BlueButton.TButton', command=translate_file)
+translate_file_button.grid(row=0, column=1, padx=10)
+
+# Добавляем кнопку Очистить
+def clear_text():
+    txt_input.delete("1.0", tk.END)
+    txt_output.delete("1.0", tk.END)
+
+clear_button = ttk.Button(buttons_frame, text='Очистить', style='BlueButton.TButton', command=clear_text)
+clear_button.grid(row=0, column=2, padx=10)
+
+# Стиль и оформление
+border_color = "#a7c7e7"
+txt_input.config(highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1)
+txt_output.config(highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1)
+
+style.configure('.', background="#f0f4f8")
+style.map('TNotebook.Tab', background=[('selected', '#66b3ff')])
+
+# Запуск
 root.mainloop()
