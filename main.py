@@ -107,7 +107,28 @@ def decode_sequence(input_sentence, model, source_vectorization, target_vectoriz
             decoded_sentence += " " + translit_word
         else:
             decoded_sentence += " " + sampled_token
+    # Удаляем [start] и [end] и лишние пробелы
+    decoded_sentence = re.sub(r'\[start\]', '', decoded_sentence)
+    decoded_sentence = re.sub(r'\[end\]', '', decoded_sentence)
+    decoded_sentence = re.sub(r'\s+', '', decoded_sentence).strip()
     return decoded_sentence
+
+# Новая функция для перевода текста по предложениям
+def translate_full_text(text):
+    # Разделяем текст на предложения по точкам, вопросительным и восклицательным знакам
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    translated_sentences = []
+
+    for sentence in sentences:
+        # Переводим каждое предложение отдельно
+        if direction == 'en-ru':
+            translated_sentence = decode_sequence(sentence.strip(), model_en_ru, source_vectorization_en, target_vectorization_en, index_lookup_en)
+        else:
+            translated_sentence = decode_sequence(sentence.strip(), model_ru_en, source_vectorization_ru, target_vectorization_ru, index_lookup_ru)
+        translated_sentences.append(translated_sentence)
+
+    # Объединяем переведённые предложения
+    return ' '.join(translated_sentences)
 
 # Глобальный режим
 direction = 'en-ru'  # или 'ru-en'
@@ -127,16 +148,14 @@ def switch_direction():
     txt_input.delete('1.0', tk.END)
     txt_output.delete('1.0', tk.END)
 
-def translate():
+def on_translate_click():
     input_text = txt_input.get('1.0', tk.END).strip()
     if not input_text:
         messagebox.showwarning("Внимание", "Пожалуйста, введите текст для перевода.")
         return
     try:
-        if direction == 'en-ru':
-            result = decode_sequence(input_text, model_en_ru, source_vectorization_en, target_vectorization_en, index_lookup_en)
-        else:
-            result = decode_sequence(input_text, model_ru_en, source_vectorization_ru, target_vectorization_ru, index_lookup_ru)
+        # Используем новую функцию
+        result = translate_full_text(input_text)
         txt_output.delete('1.0', tk.END)
         txt_output.insert(tk.END, result)
     except Exception as e:
@@ -148,10 +167,8 @@ def translate_file():
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         try:
-            if direction == 'en-ru':
-                translation = decode_sequence(content, model_en_ru, source_vectorization_en, target_vectorization_en, index_lookup_en)
-            else:
-                translation = decode_sequence(content, model_ru_en, source_vectorization_ru, target_vectorization_ru, index_lookup_ru)
+            # Используем новую функцию
+            translation = translate_full_text(content)
             save_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
             if save_path:
                 with open(save_path, 'w', encoding='utf-8') as f:
@@ -201,16 +218,6 @@ txt_output.pack(fill=tk.BOTH, expand=True, pady=5)
 # Кнопки
 buttons_frame = ttk.Frame(root)
 buttons_frame.pack(pady=10)
-
-def on_translate_click():
-    input_text = txt_input.get("1.0", tk.END).strip()
-    if input_text:
-        if direction == 'en-ru':
-            result = decode_sequence(input_text, model_en_ru, source_vectorization_en, target_vectorization_en, index_lookup_en)
-        else:
-            result = decode_sequence(input_text, model_ru_en, source_vectorization_ru, target_vectorization_ru, index_lookup_ru)
-        txt_output.delete("1.0", tk.END)
-        txt_output.insert(tk.END, result)
 
 # Добавляем кнопки
 translate_button = ttk.Button(buttons_frame, text='Перевести', style='BlueButton.TButton', command=on_translate_click)
