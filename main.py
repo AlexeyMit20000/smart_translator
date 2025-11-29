@@ -107,11 +107,13 @@ def decode_sequence(input_sentence, model, source_vectorization, target_vectoriz
             decoded_sentence += " " + translit_word
         else:
             decoded_sentence += " " + sampled_token
-    # Удаляем [start] и [end] и лишние пробелы
+    # Удаляем [start] и [end]
     decoded_sentence = re.sub(r'\[start\]', '', decoded_sentence)
     decoded_sentence = re.sub(r'\[end\]', '', decoded_sentence)
-    decoded_sentence = re.sub(r'\s+', '', decoded_sentence).strip()
+    # Удаляем пробелы
+    decoded_sentence = re.sub(r'\s+', ' ', decoded_sentence).strip()
     return decoded_sentence
+
 
 # Новая функция для перевода текста по предложениям
 def translate_full_text(text):
