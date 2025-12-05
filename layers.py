@@ -124,4 +124,3 @@ class PositionalEmbedding(layers.Layer):
             "input_dim": self.input_dim,
         })
         return config
-
