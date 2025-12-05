@@ -182,7 +182,7 @@ def translate_file():
 # Создаем GUI
 root = tk.Tk()
 root.title("Офлайн переводчик")
-root.geometry("700x700")
+root.geometry("900x500")
 root.configure(background='#f0f4f8')
 
 style = ttk.Style()
