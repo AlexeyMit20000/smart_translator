@@ -237,7 +237,7 @@ clear_button = ttk.Button(buttons_frame, text='Очистить', style='BlueBut
 clear_button.grid(row=0, column=2, padx=10)
 
 # Стиль и оформление
-border_color = "blue"
+border_color = "#a7c7e7"
 txt_input.config(highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1)
 txt_output.config(highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1)
 
