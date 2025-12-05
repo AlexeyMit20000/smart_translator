@@ -182,7 +182,7 @@ def translate_file():
 # Создаем GUI
 root = tk.Tk()
 root.title("Офлайн переводчик")
-root.geometry("900x500")
+root.geometry("900x700")
 root.configure(background='#f0f4f8')
 
 style = ttk.Style()
@@ -237,7 +237,7 @@ clear_button = ttk.Button(buttons_frame, text='Очистить', style='BlueBut
 clear_button.grid(row=0, column=2, padx=10)
 
 # Стиль и оформление
-border_color = "#a7c7e7"
+border_color = "blue"
 txt_input.config(highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1)
 txt_output.config(highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1)
 
